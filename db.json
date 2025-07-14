@@ -1,0 +1,24 @@
+{
+  "usuarios": [
+    {
+      "id": "1",
+      "nombre": "Admin",
+      "email": "admin@curso.com",
+      "password": "admin123",
+      "rol": "admin"
+    },
+    {
+      "id": "9e99",
+      "nombre": "karlos",
+      "email": "kabe_2459@hotmail.com",
+      "password": "1234",
+      "rol": "admin"
+    }
+  ],
+  "cursos": [
+    {
+      "id": "3187",
+      "titulo": "asdasdas"
+    }
+  ]
+}
