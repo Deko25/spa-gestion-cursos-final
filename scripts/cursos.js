@@ -1,99 +1,211 @@
-const API_CURSOS = "http://localhost:3000/cursos";
+// ==========================
+// Constants
+// ==========================
 
+// API endpoints for courses and reservations
+const API_CURSOS = "http://localhost:3000/cursos";
+const API_RESERVAS = "http://localhost:3000/reservas";
+
+// Simulated logged-in user ID
+const USUARIO_ID = 1;
+
+// ==========================
+// Initialize dashboard based on user role
+// ==========================
 function dashboardInit() {
   const user = JSON.parse(sessionStorage.getItem("user"));
   if (!user) return;
+
   document.getElementById("user-info").innerText = `Bienvenido, ${user.nombre} (${user.rol})`;
   renderSidebar(user.rol);
+
   if (user.rol === "admin") {
-    cargarCursosAdmin();
+    loadAdminCourses();
   } else {
-    cargarCursosVisitante();
+    loadVisitorCourses();
   }
 }
 
-function renderSidebar(rol) {
+// ==========================
+// Render sidebar based on role
+// ==========================
+function renderSidebar(role) {
   const sidebar = document.getElementById("sidebar");
-  sidebar.innerHTML = rol === "admin" ? `
-    <a href="#/">Dashboard</a><br/>
-    <button onclick="mostrarFormularioCurso()">Nuevo Curso</button>
-  ` : `<a href="#/">Cursos disponibles</a>`;
+  sidebar.innerHTML = role === "admin"
+    ? `
+      <a href="#/">Dashboard</a><br/>
+      <button onclick="showCourseForm()">New Course</button>
+    `
+    : `<a href="#/">Available Courses</a>`;
 }
 
-function cargarCursosAdmin() {
-  fetch(API_CURSOS)
-    .then(res => res.json())
-    .then(cursos => {
-      const contenedor = document.getElementById("app");
-      contenedor.innerHTML = ` 
-        <h3>Cursos</h3>
-        <table>
-          <thead>
+// ==========================
+// Load courses for admin with edit/delete
+// ==========================
+async function loadAdminCourses() {
+  try {
+    const response = await fetch(API_CURSOS);
+    const courses = await response.json();
+    const container = document.getElementById("app");
+
+    container.innerHTML = `
+      <h3>Courses</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Title</th>
+            <th>Description</th>
+            <th>Capacity</th>
+            <th>Date</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${courses.map(c => `
             <tr>
-              <th>Título</th>
-              <th>Descripción</th>
-              <th>Capacidad</th>
-              <th>Fecha</th>
-              <th>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${cursos.map(c => `
-              <tr>
-                <td>${c.titulo}</td>
-                <td>${c.descripcion || ""}</td>
-                <td>${c.capacidad || ""}</td>
-                <td>${c.fecha || ""}</td>
-                <td>
-                  <button class="editar-btn" data-id="${c.id}">Editar</button>
-                  <button class="eliminar-btn" data-id="${c.id}">Eliminar</button>
-                </td>
-              </tr>`).join("")}
-          </tbody>
-        </table>`;
+              <td>${c.titulo}</td>
+              <td>${c.descripcion || ""}</td>
+              <td>${c.capacidad || 0}</td>
+              <td>${c.fecha || ""}</td>
+              <td>
+                <button class="edit-btn" data-id="${c.id}">Edit</button>
+                <button class="delete-btn" data-id="${c.id}">Delete</button>
+              </td>
+            </tr>`).join("")}
+        </tbody>
+      </table>`;
 
-      // Ahora conectamos los botones dinámicamente
-      document.querySelectorAll(".editar-btn").forEach(btn => {
-        btn.addEventListener("click", () => {
-          const id = btn.getAttribute("data-id");
-          editarCurso(id);
-        });
-      });
-
-      document.querySelectorAll(".eliminar-btn").forEach(btn => {
-        btn.addEventListener("click", () => {
-          const id = btn.getAttribute("data-id");
-          eliminarCurso(id);
-        });
-      });
+    // Attach event listeners to buttons
+    document.querySelectorAll(".edit-btn").forEach(btn => {
+      btn.addEventListener("click", () => editCourse(btn.dataset.id));
     });
+
+    document.querySelectorAll(".delete-btn").forEach(btn => {
+      btn.addEventListener("click", () => deleteCourse(btn.dataset.id));
+    });
+  } catch (error) {
+    console.error("Failed to load courses:", error);
+  }
 }
 
+// ==========================
+// Load courses for visitors (students)
+// ==========================
+async function loadVisitorCourses() {
+  try {
+    const [courseRes, reservationRes] = await Promise.all([
+      fetch(API_CURSOS),
+      fetch(API_RESERVAS)
+    ]);
 
-function cargarCursosVisitante() {
-  fetch(API_CURSOS)
-    .then(res => res.json())
-    .then(cursos => {
-      const contenedor = document.getElementById("app");
-      contenedor.innerHTML += `<h3>Cursos Disponibles</h3><ul>${
-        cursos.map(c => `<li>${c.titulo}</li>`).join("")
-      }</ul>`;
+    const [courses, reservations] = await Promise.all([
+      courseRes.json(),
+      reservationRes.json()
+    ]);
+
+    const container = document.getElementById("app");
+    container.innerHTML = "<h3>Available Courses</h3><ul></ul>";
+    const list = container.querySelector("ul");
+
+    courses.forEach(course => {
+      const alreadyReserved = reservations.some(
+        r => r.usuarioId === USUARIO_ID && r.cursoId === course.id
+      );
+      const isFull = course.capacidad <= 0;
+
+      const li = document.createElement("li");
+
+      const buttonText = alreadyReserved
+        ? "Already Enrolled"
+        : isFull
+        ? "Full"
+        : "Reserve";
+
+      const buttonDisabled = alreadyReserved || isFull ? "disabled" : "";
+
+      li.innerHTML = `
+        <strong>${course.titulo}</strong> - Slots: ${course.capacidad} - Enrolled: ${course.inscritos}
+        <button ${buttonDisabled} data-id="${course.id}">${buttonText}</button>
+      `;
+
+      list.appendChild(li);
     });
+
+    // Add reservation handler to available buttons
+    document.querySelectorAll("button[data-id]").forEach(btn => {
+      btn.addEventListener("click", reserveCourse);
+    });
+  } catch (error) {
+    console.error("Error loading courses or reservations:", error);
+  }
 }
 
-function mostrarFormularioCurso() {
-  const contenedor = document.getElementById("app");
-  contenedor.innerHTML = `
-    <h3>Nuevo Curso</h3>
-    <form id="curso-form">
-      <input type="text" id="titulo" placeholder="Título del curso" required />
-      <input type="text" id="descripcion" placeholder="Descripción del curso" />
-      <input type="number" id="capacidad" placeholder="Capacidad del curso" required />
-      <input type="date" id="fecha" placeholder="Fecha del curso" required />
-      <button type="submit">Guardar</button>
+// ==========================
+// Reserve a course (for visitors)
+// ==========================
+async function reserveCourse(e) {
+  const courseId = (e.target.dataset.id);
+
+  try {
+    // Check if already reserved
+    const checkRes = await fetch(`${API_RESERVAS}?usuarioId=${USUARIO_ID}&cursoId=${courseId}`);
+    const existing = await checkRes.json();
+
+    if (existing.length > 0) {
+      alert("You are already enrolled in this course.");
+      return;
+    }
+
+    // Get course info
+    const courseRes = await fetch(`${API_CURSOS}/${courseId}`);
+    const course = await courseRes.json();
+
+    if (course.capacidad <= 0) {
+      alert("This course is already full.");
+      return;
+    }
+
+    // Reserve course
+    await fetch(API_RESERVAS, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ usuarioId: USUARIO_ID, cursoId: courseId })
+    });
+
+    // Update course capacity and enrolled count
+    await fetch(`${API_CURSOS}/${courseId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        capacidad: course.capacidad - 1,
+        inscritos: course.inscritos + 1
+      })
+    });
+
+    alert("Successfully enrolled.");
+    loadVisitorCourses(); // Refresh list
+  } catch (error) {
+    console.error("Error reserving course:", error);
+  }
+}
+
+// ==========================
+// Show form to add a new course
+// ==========================
+function showCourseForm() {
+  const container = document.getElementById("app");
+  container.innerHTML = `
+    <h3>New Course</h3>
+    <form id="course-form">
+      <input type="text" id="titulo" placeholder="Course Title" required />
+      <input type="text" id="descripcion" placeholder="Course Description" />
+      <input type="number" id="capacidad" placeholder="Course Capacity" required />
+      <input type="date" id="fecha" required />
+      <button type="submit">Save</button>
     </form>`;
 
-  document.getElementById("curso-form").addEventListener("submit", async e => {
+  // Handle form submission
+  document.getElementById("course-form").addEventListener("submit", async e => {
     e.preventDefault();
 
     const titulo = document.getElementById("titulo").value;
@@ -101,62 +213,80 @@ function mostrarFormularioCurso() {
     const capacidad = parseInt(document.getElementById("capacidad").value);
     const fecha = document.getElementById("fecha").value;
 
-    await fetch(API_CURSOS, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ titulo, descripcion, capacidad, fecha })
-    });
+    try {
+      await fetch(API_CURSOS, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ titulo, descripcion, capacidad, fecha })
+      });
 
-    alert("Curso agregado");
-    cargarCursosAdmin(); 
+      alert("Course added successfully.");
+      loadAdminCourses(); // Refresh list
+    } catch (error) {
+      console.error("Error creating course:", error);
+    }
   });
 }
 
+// ==========================
+// Edit an existing course
+// ==========================
+async function editCourse(id) {
+  try {
+    const res = await fetch(`${API_CURSOS}/${id}`);
+    const course = await res.json();
 
-function editarCurso(id) {
-  fetch(`${API_CURSOS}/${id}`)
-    .then(res => res.json())
-    .then(curso => {
-      const contenedor = document.getElementById("app");
-      contenedor.innerHTML = `
-        <h3>Editar Curso</h3>
-        <form id="curso-edit-form">
-          <input type="text" id="tituloEdit" value="${curso.titulo}" required />
-          <input type="text" id="descripcionEdit" value="${curso.descripcion || ""}" />
-          <input type="number" id="capacidadEdit" value="${curso.capacidad || 0}" required />
-          <input type="date" id="fechaEdit" value="${curso.fecha || ""}" required />
-          <button type="submit">Actualizar</button>
-        </form>`;
+    const container = document.getElementById("app");
+    container.innerHTML = `
+      <h3>Edit Course</h3>
+      <form id="course-edit-form">
+        <input type="text" id="tituloEdit" value="${course.titulo}" required />
+        <input type="text" id="descripcionEdit" value="${course.descripcion || ""}" />
+        <input type="number" id="capacidadEdit" value="${course.capacidad || 0}" required />
+        <input type="date" id="fechaEdit" value="${course.fecha || ""}" required />
+        <button type="submit">Update</button>
+      </form>`;
 
-      document.getElementById("curso-edit-form").addEventListener("submit", async e => {
-        e.preventDefault();
-        const titulo = document.getElementById("tituloEdit").value;
-        const descripcion = document.getElementById("descripcionEdit").value;
-        const capacidad = parseInt(document.getElementById("capacidadEdit").value);
-        const fecha = document.getElementById("fechaEdit").value;
+    document.getElementById("course-edit-form").addEventListener("submit", async e => {
+      e.preventDefault();
 
-        await fetch(`${API_CURSOS}/${id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ titulo, descripcion, capacidad, fecha })
-        });
+      const titulo = document.getElementById("tituloEdit").value;
+      const descripcion = document.getElementById("descripcionEdit").value;
+      const capacidad = parseInt(document.getElementById("capacidadEdit").value);
+      const fecha = document.getElementById("fechaEdit").value;
 
-        alert("Curso actualizado");
-        location.reload();
+      await fetch(`${API_CURSOS}/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ titulo, descripcion, capacidad, fecha })
       });
+
+      alert("Course updated.");
+      loadAdminCourses(); // Refresh list
     });
+  } catch (error) {
+    console.error("Error editing course:", error);
+  }
 }
 
-function eliminarCurso(id) {
-  if (!confirm("¿Deseas eliminar este curso?")) return;
-  fetch(`${API_CURSOS}/${id}`, { method: "DELETE" })
-    .then(() => {
-      alert("Curso eliminado");
-      location.reload();
-    });
+// ==========================
+// Delete a course
+// ==========================
+async function deleteCourse(id) {
+  if (!confirm("Are you sure you want to delete this course?")) return;
+
+  try {
+    await fetch(`${API_CURSOS}/${id}`, { method: "DELETE" });
+    alert("Course deleted.");
+    loadAdminCourses(); // Refresh list
+  } catch (error) {
+    console.error("Error deleting course:", error);
+  }
 }
 
-
+// ==========================
+// Logout functionality
+// ==========================
 const logoutButton = document.getElementById("logout-button");
 if (logoutButton) {
   logoutButton.addEventListener("click", () => {
@@ -165,3 +295,7 @@ if (logoutButton) {
   });
 }
 
+
+// Entry point for visitors if no role logic applied
+
+document.addEventListener("DOMContentLoaded", loadVisitorCourses);

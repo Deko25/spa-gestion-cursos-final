@@ -20,22 +20,56 @@
       "email": "miguel@hotmail.com",
       "password": "12345",
       "rol": "visitante"
+    },
+    {
+      "id": "f41f",
+      "nombre": "sara",
+      "email": "sara@hotmail.com",
+      "password": "1234",
+      "rol": "visitante"
     }
   ],
   "cursos": [
     {
       "titulo": "karlos",
       "descripcion": "wjadsjdksa",
-      "capacidad": 23,
+      "capacidad": 22,
       "fecha": "2025-07-09",
-      "id": "c911"
+      "id": "c911",
+      "inscritos": null
     },
     {
       "titulo": "fascasd",
       "descripcion": "fasfdas",
-      "capacidad": 23,
+      "capacidad": 2,
       "fecha": "2025-07-01",
-      "id": "8d59"
+      "id": "8d59",
+      "inscritos": null
+    },
+    {
+      "id": "3ed8",
+      "titulo": "hola",
+      "descripcion": "skfkasdlaksdkl",
+      "capacidad": 0,
+      "fecha": "2025-07-03",
+      "inscritos": null
+    }
+  ],
+  "reservas": [
+    {
+      "id": "b162",
+      "usuarioId": 1,
+      "cursoId": "c911"
+    },
+    {
+      "id": "712a",
+      "usuarioId": 1,
+      "cursoId": "8d59"
+    },
+    {
+      "id": "2a2e",
+      "usuarioId": 1,
+      "cursoId": "3ed8"
     }
   ]
 }

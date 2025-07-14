@@ -1,5 +1,8 @@
 const API = "http://localhost:3000/usuarios";
 
+// ==========================
+// Login form handler
+// ==========================
 function loginInit() {
   document.getElementById("login-form").addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -15,7 +18,9 @@ function loginInit() {
     }
   });
 }
-
+// ==========================
+// Register form handler
+// ==========================
 function registerInit() {
   document.getElementById("register-form").addEventListener("submit", async (e) => {
     e.preventDefault();
