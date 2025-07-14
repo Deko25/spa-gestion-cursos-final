@@ -13,12 +13,29 @@
       "email": "kabe_2459@hotmail.com",
       "password": "1234",
       "rol": "admin"
+    },
+    {
+      "id": "1b9a",
+      "nombre": "miguel",
+      "email": "miguel@hotmail.com",
+      "password": "12345",
+      "rol": "visitante"
     }
   ],
   "cursos": [
     {
-      "id": "3187",
-      "titulo": "asdasdas"
+      "titulo": "karlos",
+      "descripcion": "wjadsjdksa",
+      "capacidad": 23,
+      "fecha": "2025-07-09",
+      "id": "c911"
+    },
+    {
+      "titulo": "fascasd",
+      "descripcion": "fasfdas",
+      "capacidad": 23,
+      "fecha": "2025-07-01",
+      "id": "8d59"
     }
   ]
 }
